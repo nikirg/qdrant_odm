@@ -7,6 +7,7 @@ from qdrant_client.conversions import common_types as types
 DenseVectorType: TypeAlias = list[float]
 DenseMultiVectorType: TypeAlias = list[DenseVectorType]
 SparseVectorType: TypeAlias = tuple[list[int], list[float]]
+BaseVectorType = DenseVectorType | DenseMultiVectorType | SparseVectorType
 
 
 class BaseVector:

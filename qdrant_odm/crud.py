@@ -92,7 +92,6 @@ class CRUDPoint(PointModel[T]):
         write_kwargs = write_options._asdict()
         client = self.__client__
         collection_name = self.__collection_name__
-        point_vectors = models.PointVectors(id=self.id, vector=self.vectors())
 
         if self._persisted:
             client.set_payload(
@@ -105,14 +104,17 @@ class CRUDPoint(PointModel[T]):
             if overwrite_vectors:
                 client.update_vectors(
                     collection_name,
-                    points=[point_vectors],
+                    points=[models.PointVectors(id=self.id, vector=self.vectors())],
                     **write_kwargs,
                 )
         else:
             client.upsert(
                 collection_name,
-                payload=self.payload(),
-                vectors=[point_vectors],
+                points=[
+                    models.PointStruct(
+                        id=self.id, payload=self.payload(), vector=self.vectors()
+                    )
+                ],
                 **write_kwargs,
             )
             self._persisted = True
@@ -141,8 +143,8 @@ class CRUDPoint(PointModel[T]):
         """
         persisted_point = self.get(self.id, read_options)
         for field in self.fields:
-            persisted_value = getattr(persisted_point, field, None)
-            setattr(self, field, persisted_value)
+            if persisted_value := getattr(persisted_point, field, None):
+                setattr(self, field, persisted_value)
         self._persisted = True
 
     # def neighbors(
@@ -158,3 +160,4 @@ class CRUDPoint(PointModel[T]):
     #             "Cannot get neighbors for non-persisted point. You need to save it first."
     #         )
     #     self.__client__.query_points(self.__collection_name__, query=self.id)
+    

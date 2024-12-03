@@ -92,7 +92,7 @@ def build_vectors_config(cls: type[object]) -> VectorConfigs:
     vectors_config, sparse_vectors_config = {}, {}
 
     for field, type_ in cls.__annotations__.items():
-        if not hasattr(cls, "field"):
+        if not hasattr(cls, field):
             continue
 
         msg = f"Vector field {field} must be of type {{}}. Got {type_}"

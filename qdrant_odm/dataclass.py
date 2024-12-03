@@ -1,4 +1,4 @@
-from typing import Any, dataclass_transform
+from typing import Any, ClassVar, dataclass_transform
 
 
 class Serializable:
@@ -8,7 +8,19 @@ class Serializable:
 
     @property
     def fields(self) -> dict[str, Any]:
-        return type(self).__annotations__
+        parent_annotations = {}
+        parents_stack = [self.__class__.__bases__]
+
+        while parents_stack:
+            for base in parents_stack.pop():
+                if hasattr(base, "__annotations__"):
+                    for field, type_ in base.__annotations__.items():
+                        if getattr(type_, "__origin__", None) is not ClassVar:
+                            parent_annotations[field] = type_
+                if base.__bases__:
+                    parents_stack.append(base.__bases__)
+
+        return parent_annotations | type(self).__annotations__
 
     def to_dict(self, exclude: set[str] | None = None) -> dict[str, Any]:
         return {

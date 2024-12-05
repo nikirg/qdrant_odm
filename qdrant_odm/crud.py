@@ -147,17 +147,36 @@ class CRUDPoint(PointModel[T]):
                 setattr(self, field, persisted_value)
         self._persisted = True
 
-    # def neighbors(
-    #     self,
-    #     using: set[str] | None = None,
-    #     limit: int = 10,
-    #     score_threshold: float | None = None,
-    #     query_filter: types.Filter | None = None,
-    #     read_options: ReadOptions = ReadOptions(),
-    # ) -> list[Self]:
-    #     if not self._persisted:
-    #         raise ValueError(
-    #             "Cannot get neighbors for non-persisted point. You need to save it first."
-    #         )
-    #     self.__client__.query_points(self.__collection_name__, query=self.id)
-    
+#     def neighbors(
+#         self,
+#         query: Query,
+#         read_options: ReadOptions = ReadOptions(),
+#     ) -> list[Self]:
+#         if not self._persisted:
+#             raise ValueError(
+#                 "Cannot get neighbors for non-persisted point. You need to save it first."
+#             )
+#         self.__client__.query_points(self.__collection_name__, query=self.id)
+
+#         models.Prefetch(query=self.id)
+
+
+# class FusionQuery:
+#     def __init__(self, queires: list["Query"], fusion_type: models.Fusion):
+#         self._prefetch = [
+#             models.Prefetch(
+#         ]
+
+
+# class Query:
+#     def __init__(
+#         self,
+#         limit: int = 10,
+#         score_threshold: float | None = None,
+#         query_filter: types.Filter | None = None,
+#         sub_query: Self | FusionQuery | None = None,
+#     ):
+#         pass
+
+
+# models.FusionQuery()

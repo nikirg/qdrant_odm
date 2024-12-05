@@ -10,7 +10,7 @@ SparseVectorType: TypeAlias = tuple[list[int], list[float]]
 BaseVectorType = DenseVectorType | DenseMultiVectorType | SparseVectorType
 
 
-class BaseVector:
+class BaseVectorIndex:
     _params: types.VectorParams | types.SparseVectorParams
 
     @property
@@ -18,7 +18,7 @@ class BaseVector:
         return self._params
 
 
-class Vector(DenseVectorType, BaseVector):
+class Vector(DenseVectorType, BaseVectorIndex):
     """
     Params of single vector data storage
     """
@@ -42,7 +42,7 @@ class Vector(DenseVectorType, BaseVector):
         )
 
 
-class MultiVector(DenseMultiVectorType, BaseVector):
+class MultiVector(DenseMultiVectorType, BaseVectorIndex):
     """
     Params of multi vector data storage
     """
@@ -70,7 +70,7 @@ class MultiVector(DenseMultiVectorType, BaseVector):
         )
 
 
-class SparseVector(SparseVectorType, BaseVector):
+class SparseVector(SparseVectorType, BaseVectorIndex):
     """
     Params of single sparse vector data storage
     """
@@ -83,31 +83,31 @@ class SparseVector(SparseVectorType, BaseVector):
         self._params = models.SparseVectorParams(index=index, modifier=modifier)
 
 
-class VectorConfigs(TypedDict):
-    vectors_config: Mapping[str, types.VectorParams]
-    sparse_vectors_config: Mapping[str, types.SparseVectorParams]
+# class VectorConfigs(TypedDict):
+#     vectors_config: Mapping[str, types.VectorParams]
+#     sparse_vectors_config: Mapping[str, types.SparseVectorParams]
 
 
-def build_vectors_config(cls: type[object]) -> VectorConfigs:
-    vectors_config, sparse_vectors_config = {}, {}
+# def build_vectors_config(cls: type[object]) -> VectorConfigs:
+#     vectors_config, sparse_vectors_config = {}, {}
 
-    for field, type_ in cls.__annotations__.items():
-        if not hasattr(cls, field):
-            continue
+#     for field, type_ in cls.__annotations__.items():
+#         if not hasattr(cls, field):
+#             continue
 
-        msg = f"Vector field {field} must be of type {{}}. Got {type_}"
-        vector = getattr(cls, field)
-        if isinstance(vector, Vector):
-            assert type_ == DenseVectorType, msg.format(DenseVectorType)
-            vectors_config[field] = vector.params
-        elif isinstance(vector, MultiVector):
-            assert type_ == DenseMultiVectorType, msg.format(DenseMultiVectorType)
-            vectors_config[field] = vector.params
-        elif isinstance(vector, SparseVector):
-            assert type_ == SparseVectorType, msg.format(SparseVectorType)
-            sparse_vectors_config[field] = vector.params
+#         msg = f"Vector field {field} must be of type {{}}. Got {type_}"
+#         vector = getattr(cls, field)
+#         if isinstance(vector, Vector):
+#             assert type_ == DenseVectorType, msg.format(DenseVectorType)
+#             vectors_config[field] = vector.params
+#         elif isinstance(vector, MultiVector):
+#             assert type_ == DenseMultiVectorType, msg.format(DenseMultiVectorType)
+#             vectors_config[field] = vector.params
+#         elif isinstance(vector, SparseVector):
+#             assert type_ == SparseVectorType, msg.format(SparseVectorType)
+#             sparse_vectors_config[field] = vector.params
 
-    return {
-        "vectors_config": vectors_config,
-        "sparse_vectors_config": sparse_vectors_config,
-    }
+#     return {
+#         "vectors_config": vectors_config,
+#         "sparse_vectors_config": sparse_vectors_config,
+#     }

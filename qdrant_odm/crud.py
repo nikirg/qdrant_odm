@@ -1,4 +1,4 @@
-from typing import Iterator, NamedTuple, Self, Sequence
+from typing import Iterable, Iterator, NamedTuple, Self, Sequence
 
 from qdrant_client import models
 from qdrant_client.conversions import common_types as types
@@ -77,6 +77,46 @@ class CRUDPoint(PointModel[T]):
             if offset is None:
                 break
 
+    @classmethod
+    def insert_many(
+        cls,
+        *points: Self,
+        write_options: WriteOptions = WriteOptions(),
+    ) -> None:
+        """
+        Save the points to Qdrant.
+
+        Args:
+            write_options (WriteOptions, optional): Write options. Defaults to WriteOptions().
+        """
+        cls.__client__.upsert(
+            cls.__collection_name__,
+            points=[
+                models.PointStruct(
+                    id=point.id, payload=point.payload(), vector=point.vectors()
+                )
+                for point in points
+            ],
+            **write_options._asdict(),
+        )
+
+    @classmethod
+    def count(
+        cls,
+        count_filter: types.Filter | None = None,
+        exact: bool = True,
+        shard_key_selector: types.ShardKeySelector | None = None,
+        timeout: int | None = None,
+    ) -> int:
+        result = cls.__client__.count(
+            cls.__collection_name__,
+            count_filter=count_filter,
+            exact=exact,
+            shard_key_selector=shard_key_selector,
+            timeout=timeout,
+        )
+        return result.count
+
     def save(
         self,
         overwrite_vectors: bool = False,
@@ -92,11 +132,12 @@ class CRUDPoint(PointModel[T]):
         write_kwargs = write_options._asdict()
         client = self.__client__
         collection_name = self.__collection_name__
+        payload = self.payload()
 
         if self._persisted:
             client.set_payload(
                 collection_name,
-                payload=self.payload(),
+                payload=payload,
                 points=[self.id],
                 **write_kwargs,
             )
@@ -112,7 +153,7 @@ class CRUDPoint(PointModel[T]):
                 collection_name,
                 points=[
                     models.PointStruct(
-                        id=self.id, payload=self.payload(), vector=self.vectors()
+                        id=self.id, payload=payload, vector=self.vectors()
                     )
                 ],
                 **write_kwargs,
@@ -147,36 +188,32 @@ class CRUDPoint(PointModel[T]):
                 setattr(self, field, persisted_value)
         self._persisted = True
 
-#     def neighbors(
-#         self,
-#         query: Query,
-#         read_options: ReadOptions = ReadOptions(),
-#     ) -> list[Self]:
-#         if not self._persisted:
-#             raise ValueError(
-#                 "Cannot get neighbors for non-persisted point. You need to save it first."
-#             )
-#         self.__client__.query_points(self.__collection_name__, query=self.id)
+    def neighbors(
+        self,
+        using: str,
+        limit: int = 10,
+        score_threshold: float | None = None,
+        query_filter: types.Filter | None = None,
+        prefetch: models.Prefetch | None = None,
+        read_options: ReadOptions = ReadOptions(),
+    ) -> Iterable[tuple[Self, float]]:
+        if not self._persisted:
+            raise ValueError(
+                "Cannot get neighbors for non-persisted point. You need to save it first."
+            )
+        response = self.__client__.query_points(
+            self.__collection_name__,
+            query=self.id,
+            using=using,
+            limit=limit,
+            score_threshold=score_threshold,
+            query_filter=query_filter,
+            prefetch=prefetch,
+            **read_options._asdict(),
+        )
 
-#         models.Prefetch(query=self.id)
+        for record in response.points:
+            score = record.score
+            point = self._from_record(record, set_persisted=True)
 
-
-# class FusionQuery:
-#     def __init__(self, queires: list["Query"], fusion_type: models.Fusion):
-#         self._prefetch = [
-#             models.Prefetch(
-#         ]
-
-
-# class Query:
-#     def __init__(
-#         self,
-#         limit: int = 10,
-#         score_threshold: float | None = None,
-#         query_filter: types.Filter | None = None,
-#         sub_query: Self | FusionQuery | None = None,
-#     ):
-#         pass
-
-
-# models.FusionQuery()
+            yield point, score

@@ -99,54 +99,53 @@ class PointModel(DataClass, Generic[T]):
             if not hasattr(cls, field):
                 continue
 
+            # value = getattr(cls, field)
+
+            # if isinstance(value, BasePayloadIndex):
+            #     pass
+            #     # msg = f"Payload field {field} must be of type {{}}. Got {type_}"
+
+            #     # if isinstance(value, Keyword):
+            #     #     assert type_ == KeywordType, msg.format(KeywordType)
+            #     #     payload_indicies[field] = value.params
+            #     # elif isinstance(value, Integer):
+            #     #     assert type_ == IntegerType, msg.format(IntegerType)
+            #     #     payload_indicies[field] = value.params
+            #     # elif isinstance(value, Text):
+            #     #     assert type_ == TextType, msg.format(TextType)
+            #     #     payload_indicies[field] = value.params
+
+            #     # elif isinstance(value, Uuid):
+            #     #     assert type_ == UuidType, msg.format(UuidType)
+            #     #     payload_indicies[field] = value.params
+            #     # elif isinstance(value, Geo):
+            #     #     assert type_ == GeoType, msg.format(GeoType)
+            #     #     payload_indicies[field] = value.params
+            #     # elif isinstance(value, MultiGeo):
+            #     #     assert type_ == MultiGeoType, msg.format(MultiGeoType)
+            #     #     payload_indicies[field] = value.params
+            #     # elif isinstance(value, Float):
+            #     #     assert type_ == FloatType, msg.format(FloatType)
+            #     #     payload_indicies[field] = value.params
+
+            # elif isinstance(value, Callable) and value.__name__ == "Bool":
+            #     msg = f"Payload field {field} must be of type {{}}. Got {type_}"
+            #     assert type_ == BoolType, msg.format(BoolType)
+            #     payload_indicies[field] = value
+
+            # elif isinstance(cls, BaseVectorIndex):
+            msg = f"Vector field {field} must be of type {{}}. Got {type_}"
             value = getattr(cls, field)
 
-            if isinstance(value, BasePayloadIndex):
-                pass
-                # msg = f"Payload field {field} must be of type {{}}. Got {type_}"
-
-                # if isinstance(value, Keyword):
-                #     assert type_ == KeywordType, msg.format(KeywordType)
-                #     payload_indicies[field] = value.params
-                # elif isinstance(value, Integer):
-                #     assert type_ == IntegerType, msg.format(IntegerType)
-                #     payload_indicies[field] = value.params
-                # elif isinstance(value, Text):
-                #     assert type_ == TextType, msg.format(TextType)
-                #     payload_indicies[field] = value.params
-
-                # elif isinstance(value, Uuid):
-                #     assert type_ == UuidType, msg.format(UuidType)
-                #     payload_indicies[field] = value.params
-                # elif isinstance(value, Geo):
-                #     assert type_ == GeoType, msg.format(GeoType)
-                #     payload_indicies[field] = value.params
-                # elif isinstance(value, MultiGeo):
-                #     assert type_ == MultiGeoType, msg.format(MultiGeoType)
-                #     payload_indicies[field] = value.params
-                # elif isinstance(value, Float):
-                #     assert type_ == FloatType, msg.format(FloatType)
-                #     payload_indicies[field] = value.params
-
-            elif isinstance(value, Callable) and value.__name__ == "Bool":
-                msg = f"Payload field {field} must be of type {{}}. Got {type_}"
-                assert type_ == BoolType, msg.format(BoolType)
-                payload_indicies[field] = value
-
-            elif isinstance(cls, BaseVectorIndex):
-                msg = f"Vector field {field} must be of type {{}}. Got {type_}"
-
-                if isinstance(value, Vector):
-                    assert type_ == DenseVectorType, msg.format(DenseVectorType)
-                    vectors_config[field] = value.params
-                elif isinstance(value, MultiVector):
-                    assert type_ == DenseMultiVectorType, msg.format(
-                        DenseMultiVectorType
-                    )
-                    vectors_config[field] = value.params
-                elif isinstance(value, SparseVector):
-                    assert type_ == SparseVectorType, msg.format(SparseVectorType)
-                    sparse_vectors_config[field] = value.params
+            if isinstance(value, Vector):
+                assert type_ == DenseVectorType, msg.format(DenseVectorType)
+                vectors_config[field] = value.params
+            elif isinstance(value, MultiVector):
+                assert type_ == DenseMultiVectorType, msg.format(DenseMultiVectorType)
+                vectors_config[field] = value.params
+            elif isinstance(value, SparseVector):
+                assert type_ == SparseVectorType, msg.format(SparseVectorType)
+                sparse_vectors_config[field] = value.params
 
         return {
             "vectors_config": vectors_config,
@@ -168,15 +167,18 @@ class PointModel(DataClass, Generic[T]):
         cls.__non_payload_fields__.update(index_config["sparse_vectors_config"])
 
         if client.collection_exists(cls.collection_config.collection_name):
-            logger.info(
-                "Collection already exists, if you want to update it use update_collection manually",
-            )
+            pass
+            # logger.info(
+            #     "Collection already exists, if you want to update it use update_collection manually",
+            # )
         else:
             index_config |= cls.collection_config.to_dict()
             client.create_collection(**index_config)  # type: ignore
 
     @classmethod
-    def _from_record(cls, record: types.Record, set_persisted: bool = False) -> Self:
+    def _from_record(
+        cls, record: types.Record | types.ScoredPoint, set_persisted: bool = False
+    ) -> Self:
         point = cls(id=record.id, **record.payload or {}, **record.vector or {})  # type: ignore
         point._persisted = set_persisted
         return point
@@ -198,7 +200,7 @@ class PointModel(DataClass, Generic[T]):
             if field == "id":
                 continue
 
-            if vector := getattr(self, field):
+            if vector := getattr(self, field, None):
                 if type(vector) is SparseVectorType:
                     result[field] = qmodels.SparseVector(
                         indices=vector[0], values=vector[1]

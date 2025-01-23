@@ -185,6 +185,8 @@ class PointModel(DataClass, Generic[T]):
 
     def __post_init__(self):
         self._persisted = False
+        self._current_prefetch: types.Prefetch | None = None
+        self._context_prefetch_is_on = False
 
     @property
     def persisted(self) -> bool:

@@ -1,4 +1,5 @@
 from typing import Iterable, Iterator, NamedTuple, Self, Sequence
+from types import TracebackType
 
 from qdrant_client import models
 from qdrant_client.conversions import common_types as types
@@ -108,6 +109,18 @@ class CRUDPoint(PointModel[T]):
         shard_key_selector: types.ShardKeySelector | None = None,
         timeout: int | None = None,
     ) -> int:
+        """
+        Count points in collection.
+
+        Args:
+            count_filter (types.Filter | None, optional): Filter to apply. Defaults to None.
+            exact (bool, optional): Whether to use exact count. Defaults to True.
+            shard_key_selector (types.ShardKeySelector | None, optional): Shard key selector. Defaults to None.
+            timeout (int | None, optional): Timeout. Defaults to None.
+
+        Returns:
+            int: Number of points
+        """
         result = cls.__client__.count(
             cls.__collection_name__,
             count_filter=count_filter,
@@ -181,6 +194,9 @@ class CRUDPoint(PointModel[T]):
     def sync(self, read_options: ReadOptions = ReadOptions()) -> None:
         """
         Syncronize the object with Qdrant record.
+
+        Args:
+            read_options (ReadOptions, optional): Read options. Defaults to ReadOptions().
         """
         persisted_point = self.get(self.id, read_options)
         for field in self.fields:
@@ -188,19 +204,83 @@ class CRUDPoint(PointModel[T]):
                 setattr(self, field, persisted_value)
         self._persisted = True
 
+    def prefetch(
+        self,
+        using: str,
+        limit: int | None = None,
+        score_threshold: float | None = None,
+        prefetch_filter: types.Filter | None = None,
+        params: types.SearchParams | None = None,
+    ) -> Self:
+        """
+        Prefetch points from Qdrant.
+
+        Args:
+            using (str): The using vector to use.
+            limit (int | None, optional): The limit of points to prefetch. Defaults to None.
+            score_threshold (float | None, optional): The score threshold to use. Defaults to None.
+            prefetch_filter (types.Filter | None, optional): The filter to use. Defaults to None.
+            params (types.SearchParams | None, optional): The search params to use. Defaults to None.
+        """
+
+        # if not self._context_prefetch_is_on:
+        #     raise ValueError(
+        #         "Prefetch must be used in context manager. "
+        #         "Use `with point.prefetch(...):`"
+        #     )
+
+        self._context_prefetch_is_on = False
+
+        prefetch_query = models.Prefetch(
+            query=self.id,
+            using=using,
+            limit=limit,
+            score_threshold=score_threshold,
+            filter=prefetch_filter,  # type: ignore
+            prefetch=self._current_prefetch,
+            params=params,  # type: ignore
+        )
+
+        self._current_prefetch = prefetch_query
+        return self
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type: type, exc_value: Exception, traceback: TracebackType):
+        if current_prefetch := self._current_prefetch:
+            self._current_prefetch = current_prefetch.prefetch  # type: ignore
+
     def neighbors(
         self,
         using: str,
         limit: int = 10,
         score_threshold: float | None = None,
         query_filter: types.Filter | None = None,
-        prefetch: models.Prefetch | None = None,
         read_options: ReadOptions = ReadOptions(),
-    ) -> Iterable[tuple[Self, float]]:
+        search_params: types.SearchParams | None = None,
+    ) -> list[tuple[Self, float]]:
+        """
+        Get neighbors for the point.
+
+        Args:
+            using (str): which vector field to use
+            limit (int, optional): Limit. Defaults to 10.
+            score_threshold (float | None, optional): Score threshold. Defaults to None.
+            query_filter (types.Filter | None, optional): Query filter. Defaults to None.
+            prefetch (models.Prefetch | None, optional): Prefetch. Defaults to None.
+            read_options (ReadOptions, optional): Read options. Defaults to ReadOptions().
+            search_params (SearchParams, optional): Search params.
+
+        Yields:
+            Iterable[tuple[Self, float]]: Iterator of neighbors.
+        """
+
         if not self._persisted:
             raise ValueError(
                 "Cannot get neighbors for non-persisted point. You need to save it first."
             )
+
         response = self.__client__.query_points(
             self.__collection_name__,
             query=self.id,
@@ -208,12 +288,12 @@ class CRUDPoint(PointModel[T]):
             limit=limit,
             score_threshold=score_threshold,
             query_filter=query_filter,
-            prefetch=prefetch,
+            prefetch=self._current_prefetch,
+            search_params=search_params,
             **read_options._asdict(),
         )
 
-        for record in response.points:
-            score = record.score
-            point = self._from_record(record, set_persisted=True)
-
-            yield point, score
+        return [
+            (self._from_record(record, set_persisted=True), record.score)
+            for record in response.points
+        ]

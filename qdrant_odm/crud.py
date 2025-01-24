@@ -251,7 +251,7 @@ class CRUDPoint(PointModel[T]):
         if current_prefetch := self._current_prefetch:
             self._current_prefetch = current_prefetch.prefetch  # type: ignore
 
-    def neighbors(
+    def neighbours(
         self,
         using: str,
         limit: int = 10,
@@ -261,7 +261,7 @@ class CRUDPoint(PointModel[T]):
         search_params: types.SearchParams | None = None,
     ) -> list[tuple[Self, float]]:
         """
-        Get neighbors for the point.
+        Get neighbours for the point.
 
         Args:
             using (str): which vector field to use
@@ -273,12 +273,12 @@ class CRUDPoint(PointModel[T]):
             search_params (SearchParams, optional): Search params.
 
         Yields:
-            Iterable[tuple[Self, float]]: Iterator of neighbors.
+            Iterable[tuple[Self, float]]: Iterator of neighbours.
         """
 
         if not self._persisted:
             raise ValueError(
-                "Cannot get neighbors for non-persisted point. You need to save it first."
+                "Cannot get neighbours for non-persisted point. You need to save it first."
             )
 
         response = self.__client__.query_points(

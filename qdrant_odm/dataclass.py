@@ -23,11 +23,19 @@ class Serializable:
         return parent_annotations | type(self).__annotations__
 
     def to_dict(self, exclude: set[str] | None = None) -> dict[str, Any]:
-        return {
-            field: getattr(self, field)
-            for field in self.fields
-            if exclude is None or field not in exclude
-        }
+        exclude = exclude or set()
+        dct = {}
+        
+        for field in self.fields:
+            if field in exclude:
+                continue
+            
+            if value := getattr(self, field, None):
+                dct[field] = value
+            else:
+                dct[field] = getattr(self.__class__, field, None)
+            
+        return dct
 
 
 @dataclass_transform(kw_only_default=True)

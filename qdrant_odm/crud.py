@@ -100,6 +100,25 @@ class CRUDPoint(PointModel[T]):
             ],
             **write_options._asdict(),
         )
+        
+    @classmethod
+    def delete_many(
+        cls,
+        *points: Self,
+        write_options: WriteOptions = WriteOptions(),
+    ) -> None:
+        """
+        Delete the points from Qdrant.
+
+        Args:
+            points_selector (Iterable[T]): Points selector.
+            write_options (WriteOptions, optional): Write options. Defaults to WriteOptions().
+        """
+        cls.__client__.delete(
+            cls.__collection_name__,
+            points_selector=models.PointIdsList(points=[point.id for point in points]),
+            **write_options._asdict(),
+        )
 
     @classmethod
     def count(

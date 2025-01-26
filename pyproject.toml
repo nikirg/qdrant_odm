@@ -1,6 +1,6 @@
 [project]
 name = "qdrant-odm"
-version = "0.0.2"
+version = "0.0.1"
 description = "Object-Document Mapping Library for Qdrant"
 readme = "README.md"
 requires-python = ">=3.11"

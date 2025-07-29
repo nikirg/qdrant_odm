@@ -35,5 +35,5 @@ chunk.save()
 
 with chunk.prefetch("topic_vector"):
     with chunk.prefetch("title_vector"):
-        neighbors = chunk.neighbors(using="description_vector")
+        neighbors = chunk.neighbours(using="description_vector")
         print(neighbors)

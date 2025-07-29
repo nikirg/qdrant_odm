@@ -3,7 +3,7 @@ name = "qdrant-odm"
 version = "0.0.4"
 description = "Object-Document Mapping Library for Qdrant"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "loguru>=0.7.2",
     "qdrant-client>=1.12.1",
